@@ -172,13 +172,6 @@ fn main()
 	let glx_context = xlib_client.create_glx_context(&window, &fb_configs);
 	let opengl_context = &glx_context.opengl_context;
 
-	let vert_shader = crate::platform::opengl::VertShader::new(&opengl_context, dbg!(include_str!("../shaders/VertShader.glsl")))
-		.expect("No se pudo compilar el Vertex Shader");
-	let frag_shader = crate::platform::opengl::FragShader::new(&opengl_context, include_str!("../shaders/FragShader.glsl"))
-		.expect("No se pudo compilar el Fragment Shader");
-
-	let shader_program = crate::platform::opengl::ShaderProgram::new(&opengl_context, &vert_shader, &frag_shader);
-
 	let triangle = crate::platform::opengl::Polygon::new(
 		&opengl_context,
 		&crate::math::Shape
@@ -192,6 +185,13 @@ fn main()
 			],
 		}
 	);
+
+	let vert_shader = crate::platform::opengl::VertShader::new(&opengl_context, dbg!(include_str!("../shaders/VertShader.glsl")))
+		.expect("No se pudo compilar el Vertex Shader");
+	let frag_shader = crate::platform::opengl::FragShader::new(&opengl_context, include_str!("../shaders/FragShader.glsl"))
+		.expect("No se pudo compilar el Fragment Shader");
+
+	let shader_program = crate::platform::opengl::ShaderProgram::new(&opengl_context, &vert_shader, &frag_shader);
 
 	loop
 	{

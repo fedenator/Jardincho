@@ -1,4 +1,4 @@
-use std::{convert::TryInto, str::FromStr};
+use std::convert::TryInto;
 
 //TODO(fpalacios): Mover esto a un closure
 pub unsafe fn check_gl_error()

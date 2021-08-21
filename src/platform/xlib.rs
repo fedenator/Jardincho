@@ -37,9 +37,7 @@ pub unsafe extern "C" fn ctx_error_handler(
 	return 0;
 }
 
-
 /*---------------------- Wrapper de xlib ------------*/
-
 pub struct RenderPictFormat<'visual_info, 'fb_configs, 'client, 'conn>
 {
 	pub xrender_pict_format: *mut x11::xrender::XRenderPictFormat,
@@ -164,6 +162,14 @@ impl<'window, 'client, 'conn> GlxContext<'window, 'client, 'conn>
 	pub fn renderer<'context>(&'context self) -> GlxWindowRenderer<'context, 'window, 'client, 'conn>
 	{
 		return GlxWindowRenderer::new(self);
+	}
+}
+
+impl<'window, 'client, 'conn> Drop for GlxContext<'window, 'client, 'conn>
+{
+	fn drop(&mut self)
+	{
+		unsafe { x11::glx::glXDestroyContext(self.client.xlib_display, self.context_ptr) };
 	}
 }
 
