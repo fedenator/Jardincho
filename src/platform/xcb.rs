@@ -70,46 +70,18 @@ impl PropertyValue
 	}
 }
 
-pub struct Client
+pub struct Client<'conn>
 {
-	pub conn               : xcb::Connection,
-	pub preferred_screen_id: ScreenID,
+	pub conn               : &'conn xcb::Connection,
 }
 
-impl Client
+impl<'conn> Client<'conn>
 {
-	pub fn new() -> Client
+	pub fn new(conn: &'conn xcb::Connection) -> Client
 	{
-		let (conn, preferred_screen_id) = xcb::Connection::connect(None).unwrap();
-
 		return Client
 		{
 			conn,
-			preferred_screen_id
-		};
-	}
-
-	pub fn with_xlib_display() -> Client
-	{
-		let (conn, preferred_screen_id) = xcb::Connection::connect_with_xlib_display().unwrap();
-		conn.set_event_queue_owner(xcb::EventQueueOwner::Xcb);
-
-		return Client
-		{
-			conn,
-			preferred_screen_id
-		};
-	}
-
-	pub fn preferred_screen(&self) -> Screen
-	{
-		let screen = self.conn.get_setup().roots().nth(self.preferred_screen_id as usize).unwrap();
-
-		return Screen
-		{
-			id        : self.preferred_screen_id,
-			client    : self,
-			xcb_screen: screen,
 		};
 	}
 
@@ -188,15 +160,29 @@ impl Client
 	}
 }
 
-pub struct Screen<'conn>
+pub struct Screen<'client, 'conn>
 {
 	pub id        : ScreenID,
-	pub client    : &'conn Client,
-	pub xcb_screen: xcb::Screen<'conn>,
+	pub client    : &'client Client<'conn>,
+	pub xcb_screen: xcb::Screen<'client>,
 }
 
-impl<'conn> Screen<'conn>
+impl<'client, 'conn> Screen<'client, 'conn>
 {
+	pub fn from_id(client: &'client Client<'conn>, id: ScreenID) -> Option<Screen<'client, 'conn>>
+	{
+		let xcb_screen = client.conn.get_setup().roots().nth(std::convert::TryInto::try_into(id).unwrap())?;
+
+		return Some(
+			Screen
+			{
+				id,
+				client,
+				xcb_screen,
+			}
+		);
+	}
+
 	pub fn root_window(&self) -> Window
 	{
 		return Window
@@ -216,15 +202,15 @@ impl<'conn> Screen<'conn>
 	}
 }
 
-pub struct Window<'conn>
+pub struct Window<'screen, 'client, 'conn>
 {
-	pub screen: &'conn Screen<'conn>,
+	pub screen: &'screen Screen<'client, 'conn>,
 	pub id: WindowID,
 }
 
-impl<'conn> Window<'conn>
+impl<'screen, 'client, 'conn> Window<'screen, 'client, 'conn>
 {
-	pub fn children(&self) -> Vec<Window<'conn>>
+	pub fn children(&self) -> Vec<Window<'screen, 'client, 'conn>>
 	{
 		let tree = xcb::query_tree(&self.screen.client.conn, self.id).get_reply().unwrap();
 		let children = tree.children();
@@ -387,7 +373,7 @@ impl<'conn> Window<'conn>
 		border_pixel         : Option<u32>,
 		visual_id            : Option<VisualID>
 	)
-	-> Result<Window<'conn>, Error>
+	-> Result<Window<'screen, 'client, 'conn>, Error>
 	{
 		let child_id = self.screen.client.generate_id();
 
@@ -450,15 +436,15 @@ impl<'conn> Window<'conn>
 	}
 }
 
-pub struct GraphicsContext<'conn>
+pub struct GraphicsContext<'client, 'conn>
 {
 	id    : GraphicsContextID,
-	client: &'conn Client
+	client: &'client Client<'conn>
 }
 
-impl<'conn> GraphicsContext<'conn>
+impl<'client, 'conn> GraphicsContext<'client, 'conn>
 {
-	pub fn generate(window: &'conn Window, foreground: Color, background: Color) -> GraphicsContext<'conn>
+	pub fn generate(window: &Window<'_, 'client, 'conn>, foreground: Color, background: Color) -> GraphicsContext<'client, 'conn>
 	{
 		let id = window.screen.client.generate_id();
 
@@ -543,15 +529,15 @@ impl<'conn> GraphicsContext<'conn>
 	}
 }
 
-pub struct ColorMap<'conn>
+pub struct ColorMap<'client, 'conn>
 {
-	pub client: &'conn Client,
+	pub client: &'client Client<'conn>,
 	pub id    : ColorMapID
 }
 
-impl<'conn> ColorMap<'conn>
+impl<'client, 'conn> ColorMap<'client, 'conn>
 {
-	pub fn create(window: &'conn Window, visual: VisualID) -> ColorMap<'conn>
+	pub fn create(window: &'conn Window, visual: VisualID) -> ColorMap<'client, 'conn>
 	{
 		let client = window.screen.client;
 		let id = client.generate_id();
@@ -572,17 +558,17 @@ impl<'conn> ColorMap<'conn>
 	}
 }
 
-pub struct PixMap<'conn>
+pub struct PixMap<'client, 'conn>
 {
-	pub client: &'conn Client,
+	pub client: &'client Client<'conn>,
 	pub id    : PixMapID,
 	pub width : u16,
 	pub height: u16
 }
 
-impl<'conn> PixMap<'conn>
+impl<'client, 'conn> PixMap<'client, 'conn>
 {
-	pub fn create(screen: &'conn Screen, drawable: DrawableID, width: u16, height: u16) -> PixMap<'conn>
+	pub fn create(screen: &Screen<'client, 'conn>, drawable: DrawableID, width: u16, height: u16) -> PixMap<'client, 'conn>
 	{
 		let client = screen.client;
 		let id = client.generate_id();
