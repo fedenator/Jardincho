@@ -1,16 +1,9 @@
-pub mod math;
+pub mod world;
 pub mod color;
 pub mod platform;
+pub mod renderer;
 
-use glium::{glutin::platform::unix::WindowExtUnix, program};
-
-glium::implement_vertex!(Vertex, position, color);
-#[derive(Copy, Clone)]
-struct Vertex
-{
-	position: [f32; 2],
-	color   : [f32; 3],
-}
+use glium::glutin::platform::unix::WindowExtUnix;
 
 fn setup_xcb_window(xcb_conn: &xcb::Connection, window_context: &glium::glutin::window::Window)
 {
@@ -81,88 +74,30 @@ fn setup_window(event_loop: &glium::glutin::event_loop::EventLoop<()>) -> glium:
 	return display;
 }
 
-fn draw(
-	display      : &glium::Display,
-	program      : &glium::Program,
-	vertex_buffer: &glium::VertexBuffer<Vertex>,
-	index_buffer : &glium::IndexBuffer<u16>
-)
-{
-	// building the uniforms
-	let uniforms = glium::uniform!
-	{
-		matrix:
-		[
-			[1.0_f32, 0.0_f32, 0.0_f32, 0.0_f32],
-			[0.0_f32, 1.0_f32, 0.0_f32, 0.0_f32],
-			[0.0_f32, 0.0_f32, 1.0_f32, 0.0_f32],
-			[0.0_f32, 0.0_f32, 0.0_f32, 1.0_f32]
-		]
-	};
-
-	// drawing a frame
-	let mut target = display.draw();
-	glium::Surface::clear_color(&mut target, 0.0_f32, 0.0_f32, 0.0_f32, 0.0_f32);
-	glium::Surface::draw(&mut target, vertex_buffer, index_buffer, &program, &uniforms, &Default::default()).unwrap();
-	target.finish().unwrap();
-}
-
-
 fn main()
 {
 	let event_loop = glium::glutin::event_loop::EventLoop::new();
+
 	let display = setup_window(&event_loop);
 
-	let vertex_buffer = glium::VertexBuffer::new(
-		&display,
-		&[
-			Vertex { position: [-0.5, -0.5], color: [0.0, 1.0, 0.0] },
-			Vertex { position: [ 0.0,  0.5], color: [0.0, 0.0, 1.0] },
-			Vertex { position: [ 0.5, -0.5], color: [1.0, 0.0, 0.0] },
-		]
-	).unwrap();
+	let mut world = crate::world::World::new(&display);
 
-	let index_buffer = glium::IndexBuffer::new(
-		&display,
-		glium::index::PrimitiveType::TrianglesList,
-		&[0_u16, 1_u16, 2_u16]
-	).unwrap();
-
-	let program = glium::program!(
-		&display,
-		140 =>
-		{
-			vertex  : include_str!("../shaders/140/VertShader.glsl"),
-			fragment: include_str!("../shaders/140/FragShader.glsl")
-		},
-		110 =>
-		{
-			vertex  : include_str!("../shaders/110/VertShader.glsl"),
-			fragment: include_str!("../shaders/110/FragShader.glsl"),
-		},
-		100 =>
-		{
-			vertex  : include_str!("../shaders/100/VertShader.glsl"),
-			fragment: include_str!("../shaders/100/FragShader.glsl"),
-		},
-	).unwrap();
-
-	draw(&display, &program, &vertex_buffer, &index_buffer);
-
-	event_loop.run(move |event, _, control_flow|
+	event_loop.run( move |event, _, control_flow|
 	{
-		*control_flow = match event {
-			glium::glutin::event::Event::WindowEvent { event, .. } => match event {
-				// Break from the main loop when the window is closed.
-				glium::glutin::event::WindowEvent::CloseRequested => glium::glutin::event_loop::ControlFlow::Exit,
-				// Redraw the triangle when the window is resized.
-				glium::glutin::event::WindowEvent::Resized(..) => {
-					draw(&display, &program, &vertex_buffer, &index_buffer);
-					glium::glutin::event_loop::ControlFlow::Poll
-				},
-				_ => glium::glutin::event_loop::ControlFlow::Poll,
-			},
+		*control_flow = match event
+		{
+			glium::glutin::event::Event::WindowEvent
+			{
+				event: glium::glutin::event::WindowEvent::CloseRequested,
+				..
+			} => glium::glutin::event_loop::ControlFlow::Exit,
 			_ => glium::glutin::event_loop::ControlFlow::Poll,
 		};
+
+		world.update();
+		world.draw(&display);
+
+		let next_frame_time = std::time::Instant::now() + std::time::Duration::from_millis(1000 / 60);
+		*control_flow = glium::glutin::event_loop::ControlFlow::WaitUntil(next_frame_time);
 	});
 }
