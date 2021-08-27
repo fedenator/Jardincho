@@ -1,22 +1,62 @@
-glium::implement_vertex!(Vertex, position, color);
+glium::implement_vertex!(Vertex2D, position, texture_coords);
 #[derive(Copy, Clone)]
-pub struct Vertex
+pub struct Vertex2D
+{
+	pub position      : [f32; 2],
+	pub texture_coords: [f32; 2],
+}
+
+glium::implement_vertex!(Vertex3D, position, color);
+#[derive(Copy, Clone)]
+pub struct Vertex3D
 {
 	pub position: [f32; 3],
 	pub color   : [f32; 3],
 }
 
-pub struct Object
+pub struct Object2D
+{
+	pub vertex_buffer         : glium::VertexBuffer<Vertex2D>,
+	pub index_buffer          : glium::IndexBuffer<u16>,
+	pub texture               : glium::texture::CompressedSrgbTexture2d,
+	pub texture_shader_program: glium::Program,
+}
+
+pub struct Object3D
 {
 	pub rotation_matrix    : nalgebra::Matrix4<f32>,
 	pub translation_vector : nalgebra::Vector3<f32>,
-	pub vertex_buffer      : glium::VertexBuffer<Vertex>,
+	pub vertex_buffer      : glium::VertexBuffer<Vertex3D>,
 	pub index_buffer       : glium::IndexBuffer<u16>,
 	pub fill_shader_program: glium::Program,
 	pub wire_shader_program: glium::Program,
 }
 
-pub fn draw(display: &glium::Display, object: &Object)
+pub fn draw_object_2d(display: &glium::Display, object: &Object2D)
+{
+	let uniforms = glium::uniform!
+	{
+		texture2d: &object.texture
+	};
+
+	let mut target = display.draw();
+	glium::Surface::clear_color(&mut target, 0.0_f32, 0.0_f32, 0.0_f32, 0.0_f32);
+
+	let draw_parameters = glium::DrawParameters::default();
+
+	glium::Surface::draw(
+		&mut target,
+		&object.vertex_buffer,
+		&object.index_buffer,
+		&object.texture_shader_program,
+		&uniforms,
+		&draw_parameters
+	).unwrap();
+
+	target.finish().unwrap();
+}
+
+pub fn draw_object_3d(display: &glium::Display, object: &Object3D)
 {
 	let uniforms = glium::uniform!
 	{

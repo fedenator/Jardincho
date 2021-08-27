@@ -77,7 +77,6 @@ fn setup_window(event_loop: &glium::glutin::event_loop::EventLoop<()>) -> glium:
 fn main()
 {
 	let event_loop = glium::glutin::event_loop::EventLoop::new();
-
 	let display = setup_window(&event_loop);
 
 	let mut world = crate::world::World::new(&display);
@@ -97,7 +96,7 @@ fn main()
 		world.update();
 		world.draw(&display);
 
-		let next_frame_time = std::time::Instant::now() + std::time::Duration::from_millis(1000 / 60);
+		let next_frame_time = std::time::Instant::now() + std::time::Duration::from_millis(1000000);
 		*control_flow = glium::glutin::event_loop::ControlFlow::WaitUntil(next_frame_time);
 	});
 }
