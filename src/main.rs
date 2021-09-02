@@ -81,6 +81,10 @@ fn main()
 
 	let mut world = crate::world::World::new(&display);
 
+	let mut last_frame_time = std::time::Instant::now();
+	let mut frame_timer = std::time::Duration::from_nanos(0);
+	let frame_delay = std::time::Duration::from_millis(1000 / 60);
+
 	event_loop.run( move |event, _, control_flow|
 	{
 		*control_flow = match event
@@ -93,10 +97,17 @@ fn main()
 			_ => glium::glutin::event_loop::ControlFlow::Poll,
 		};
 
-		world.update();
-		world.draw(&display);
+		let current_frame_time = std::time::Instant::now();
+		frame_timer += current_frame_time - last_frame_time;
 
-		let next_frame_time = std::time::Instant::now() + std::time::Duration::from_millis(1000000);
-		*control_flow = glium::glutin::event_loop::ControlFlow::WaitUntil(next_frame_time);
+		if frame_timer >= frame_delay
+		{
+			world.update(&frame_timer);
+			world.draw(&display);
+
+			frame_timer = std::time::Duration::from_nanos(0);
+		}
+
+		last_frame_time = current_frame_time;
 	});
 }

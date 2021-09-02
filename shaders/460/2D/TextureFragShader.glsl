@@ -8,5 +8,9 @@ out vec4 fragment_color;
 
 void main()
 {
-	fragment_color = texture(texture2d, vertex_texture_coords);
+	vec4 tex_color = texture(texture2d, vertex_texture_coords);
+
+	if(tex_color.a < 0.1) discard;
+
+	fragment_color = tex_color;
 }
